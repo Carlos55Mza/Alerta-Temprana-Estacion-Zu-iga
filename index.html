@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Alertas - Estación Zúñiga</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        body { background: #0d131a; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .contenedor { max-width: 500px; width: 100%; background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); box-sizing: border-box; }
+        h2 { text-align: center; color: #ced4da; font-size: 1.4rem; margin-top: 0; }
+        label { display: block; margin: 15px 0 5px; font-size: 0.9rem; color: #a0aec0; font-weight: bold;}
+        select, textarea { width: 100%; padding: 12px; background: #1a232d; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: white; font-size: 1rem; box-sizing: border-box; }
+        textarea { resize: none; height: 100px; font-family: inherit; }
+        .btn-enviar { width: 100%; background: #e74c3c; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.1rem; font-weight: bold; margin-top: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.2s; }
+        .btn-enviar:hover { background: #c0392b; }
+        .btn-normal { width: 100%; background: #2ecc71; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.1rem; font-weight: bold; margin-top: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.2s; }
+        .btn-normal:hover { background: #27ae60; }
+        .lista-recientes { margin-top: 25px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; }
+        .alerta-item { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; display: flex; justify-content: space-between; }
+        .alerta-item:last-child { border: none; }
+    </style>
+</head>
+<body>
+
+    <div class="contenedor">
+        <h2>⚠️ EMISOR DE ALERTA TEMPRANA</h2>
+        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin-bottom:20px;">
+
+        <form id="form-alerta" onsubmit="publicarAlerta(event)">
+            <label for="tipo-alerta">Fenómeno Meteorológico</label>
+            <select id="tipo-alerta">
+                <option value="💨 VIENTO ZONDA">💨 Viento Zonda</option>
+                <option value="🔮 ALERTA DE GRANIZO">🔮 Alerta de Granizo</option>
+                <option value="⛈️ TORMENTA ELÉCTRICA">⛈️ Tormenta / Lluvia Pesada</option>
+                <option value="❄️ HELADAS TARDÍAS">❄️ Helada Tardía / Frío Extremo</option>
+                <option value="🔥 OLA DE CALOR">🔥 Ola de Calor Extremo</option>
+            </select>
+
+            <label for="nivel-riesgo">Nivel de Urgencia</label>
+            <select id="nivel-riesgo">
+                <option value="AMARILLO">🟡 AMARILLO (Atención / Prevención)</option>
+                <option value="NARANJA">🟠 NARANJA (Preparación / Riesgo Alto)</option>
+                <option value="ROJO">🔴 ROJO (Peligro Inminente / Emergencia)</option>
+            </select>
+
+            <label for="detalle-alerta">Mensaje e Instrucciones para las Empresas</label>
+            <textarea id="detalle-alerta" placeholder="Ej: Se esperan ráfagas de Zonda en San Martín a partir de las 15hs..."></textarea>
+
+            <button type="submit" class="btn-enviar">
+                <span class="material-symbols-outlined">campaign</span> EMITIR ALERTA A ABONADOS
+            </button>
+        </form>
+
+        <button type="button" id="btn-normalizar" class="btn-normal" onclick="normalizarSituacion()">
+            <span class="material-symbols-outlined">gpp_good</span> VOLVER A SITUACIÓN NORMAL (VERDE)
+        </button>
+
+        <div class="lista-recientes">
+            <h3 style="margin:0 0 10px 0; font-size:0.9rem; color:#74b9ff;">Historial Reciente (Enviadas)</h3>
+            <div id="historial-alertas">Cargando historial...</div>
+        </div>
+    </div>
+
+    <script src="alertas.js"></script>
+    <script>
+        // Imprime la lista abajo para tener control
+        async function cargarHistorialLocal() {
+            const lista = await obtenerAlertas();
+            const div = document.getElementById('historial-alertas');
+            if(lista.length === 0) {
+                div.innerHTML = "<div style='color:#8a99a6; font-size:0.85rem;'>No hay alertas enviadas.</div>";
+                return;
+            }
+            div.innerHTML = lista.slice(0, 4).map(a => `
+                <div class="alerta-item">
+                    <span>${a.riesgo === 'VERDE' ? '🟢' : '⚠️'} <b>${a.fenomeno}</b></span>
+                    <span style="color:#8a99a6">${a.fecha.split(' ')[1] || ''} hs</span>
+                </div>
+            `).join('');
+        }
+
+        async function publicarAlerta(e) {
+            e.preventDefault();
+            const btn = document.querySelector('.btn-enviar');
+            btn.innerText = "ENVIANDO...";
+
+            const nuevaAlerta = {
+                id: Date.now(),
+                fenomeno: document.getElementById('tipo-alerta').value,
+                riesgo: document.getElementById('nivel-riesgo').value,
+                detalle: document.getElementById('detalle-alerta').value,
+                fecha: new Date().toLocaleString('es-AR')
+            };
+
+            let historial = await obtenerAlertas();
+            historial.unshift(nuevaAlerta);
+            await subirAlertas(historial);
+
+            document.getElementById('detalle-alerta').value = "";
+            btn.innerHTML = `<span class="material-symbols-outlined">campaign</span> EMITIR ALERTA A ABONADOS`;
+            cargarHistorialLocal();
+        }
+
+        async function normalizarSituacion() {
+            const btn = document.getElementById('btn-normalizar');
+            btn.innerText = "NORMALIZANDO...";
+
+            const verde = {
+                id: Date.now(),
+                fenomeno: "SITUACIÓN NORMAL",
+                riesgo: "VERDE",
+                detalle: "No hay alertas meteorológicas vigentes para el departamento de San Martín en este momento.",
+                fecha: new Date().toLocaleString('es-AR')
+            };
+
+            let historial = await obtenerAlertas();
+            historial.unshift(verde);
+            await subirAlertas(historial);
+
+            btn.innerHTML = `<span class="material-symbols-outlined">gpp_good</span> VOLVER A SITUACIÓN NORMAL (VERDE)`;
+            cargarHistorialLocal();
+        }
+
+        // Arranca cargando las enviadas
+        cargarHistorialLocal();
+    </script>
+</body>
+</html>

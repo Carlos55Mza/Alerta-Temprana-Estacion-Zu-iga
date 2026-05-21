@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Alerta Temprana - Estación Zúñiga</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        body { background: #0d131a; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; }
+        .contenedor-cliente { max-width: 500px; width: 100%; background: rgba(255, 255, 255, 0.03); border: 2px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 25px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); box-sizing: border-box; backdrop-filter: blur(10px); }
+        .encabezado { text-align: center; margin-bottom: 25px; }
+        .logo-marca { font-size: 1.3rem; font-weight: 900; letter-spacing: 2px; color: #74b9ff; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .sub-marca { font-size: 0.8rem; color: #8a99a6; margin-top: 4px; }
+        .estado-box { padding: 30px 20px; border-radius: 18px; text-align: center; margin-bottom: 25px; transition: all 0.4s ease; box-shadow: inset 0 0 20px rgba(0,0,0,0.2); }
+        .estado-icono { font-size: 50px; margin-bottom: 10px; display: inline-block; }
+        .estado-titulo { font-size: 1.5rem; font-weight: 900; letter-spacing: 1px; }
+        .estado-mensaje { font-size: 0.95rem; margin-top: 8px; opacity: 0.9; line-height: 1.4; }
+        .panel-historial { background: rgba(0,0,0,0.25); border-radius: 16px; padding: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        .historial-titulo { margin: 0 0 15px 0; font-size: 0.95rem; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+        .tarjeta-alerta { background: rgba(255,255,255,0.02); padding: 12px 15px; border-radius: 0 10px 10px 0; margin-bottom: 12px; font-size: 0.9rem; border-left: 4px solid #2ecc71; }
+        .tarjeta-alerta:last-child { margin-bottom: 0; }
+        .tarjeta-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 6px; }
+        .tarjeta-fecha { font-size: 0.75rem; color: #8a99a6; font-weight: normal; }
+    </style>
+</head>
+<body>
+
+    <div class="contenedor-cliente">
+        <div class="encabezado">
+            <div class="logo-marca"><span class="material-symbols-outlined" style="color:#ffb142;">bolt</span> ESTACIÓN ZÚÑIGA</div>
+            <div class="sub-marca">Servicio Corporativo de Alerta Temprana</div>
+        </div>
+
+        <div id="semaforo" class="estado-box">
+            <span id="semaforo-icono" class="material-symbols-outlined estado-icono">sync</span>
+            <div id="semaforo-titulo" class="estado-titulo">Sincronizando...</div>
+            <div id="semaforo-mensaje" class="estado-mensaje">Buscando reportes activos en el servidor de Estación Zúñiga.</div>
+        </div>
+
+        <div class="panel-historial">
+            <h3 class="historial-titulo">
+                <span class="material-symbols-outlined" style="font-size: 18px; color:#74b9ff;">history</span> 
+                Historial de Avisos (Últimas 24hs)
+            </h3>
+            <div id="lista-alertas-cliente"></div>
+        </div>
+    </div>
+
+    <script src="alertas.js"></script>
+    <script>
+        async function actualizarPantallaCliente() {
+            const listaAlertas = await obtenerAlertas();
+            const semaforo = document.getElementById('semaforo');
+            const semaforoIcono = document.getElementById('semaforo-icono');
+            const semaforoTitulo = document.getElementById('semaforo-titulo');
+            const semaforoMensaje = document.getElementById('semaforo-mensaje');
+            const listaDiv = document.getElementById('lista-alertas-cliente');
+
+            if (listaAlertas.length === 0 || listaAlertas[0].riesgo === "VERDE") {
+                const det = (listaAlertas[0] && listaAlertas[0].detalle) || "No hay alertas meteorológicas vigentes para el departamento de San Martín en este momento.";
+                semaforo.style.background = "rgba(46, 204, 113, 0.15)";
+                semaforo.style.border = "2px solid #2ecc71";
+                semaforoIcono.innerText = "gpp_good"; semaforoIcono.style.color = "#2ecc71";
+                semaforoTitulo.innerText = "SITUACIÓN NORMAL"; semaforoTitulo.style.color = "#2ecc71";
+                semaforoMensaje.innerText = det;
+            } else {
+                const ultimaAlerta = listaAlertas[0];
+                
+                // Selector estético exacto por colores de riesgo corporativos
+                if (ultimaAlerta.riesgo === "ROJO") {
+                    semaforo.style.background = "rgba(231, 76, 60, 0.2)"; semaforo.style.border = "2px solid #ff7675";
+                    semaforoIcono.innerText = "error"; semaforoIcono.style.color = "#ff7675";
+                } else if (ultimaAlerta.riesgo === "NARANJA") {
+                    semaforo.style.background = "rgba(230, 126, 34, 0.2)"; semaforo.style.border = "2px solid #e67e22";
+                    semaforoIcono.innerText = "warning"; semaforoIcono.style.color = "#e67e22";
+                } else if (ultimaAlerta.riesgo === "AMARILLO") {
+                    semaforo.style.background = "rgba(241, 196, 15, 0.15)"; semaforo.style.border = "2px solid #f1c40f";
+                    semaforoIcono.innerText = "warning"; semaforoIcono.style.color = "#f1c40f";
+                }
+                
+                semaforoTitulo.innerText = `AVISO: ${ultimaAlerta.fenomeno}`;
+                semaforoTitulo.style.color = (ultimaAlerta.riesgo === "ROJO") ? "#ff7675" : (ultimaAlerta.riesgo === "NARANJA" ? "#e67e22" : "#f1c40f");
+                semaforoMensaje.innerText = ultimaAlerta.detalle;
+            }
+
+            // Filtrar y renderizar la lista del historial
+            const historicosFiltrados = listaAlertas.filter(a => a.fenomeno !== "SITUACIÓN NORMAL");
+            if (historicosFiltrados.length === 0) {
+                listaDiv.innerHTML = '<div style="color:#8a99a6; font-size:0.85rem; text-align:center; padding:10px 0;">Sin registros críticos recientes en la zona.</div>';
+                return;
+            }
+
+            listaDiv.innerHTML = historicosFiltrados.slice(0, 3).map(alerta => {
+                let colorBorde = "#f1c40f";
+                if (alerta.riesgo === "ROJO") colorBorde = "#ff7675";
+                if (alerta.riesgo === "NARANJA") colorBorde = "#e67e22";
+
+                return `
+                    <div class="tarjeta-alerta" style="border-left-color: ${colorBorde}">
+                        <div class="tarjeta-header">
+                            <span style="color: ${colorBorde}">${alerta.fenomeno}</span>
+                            <span class="tarjeta-fecha">${alerta.fecha}</span>
+                        </div>
+                        <div style="color: #ced4da; line-height: 1.3;">${alerta.detalle}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Intervalo de actualización automatizado
+        setInterval(actualizarPantallaCliente, 5000);
+        actualizarPantallaCliente();
+    </script>
+</body>
+</html>
